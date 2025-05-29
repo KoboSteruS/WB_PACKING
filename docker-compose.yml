@@ -1,0 +1,10 @@
+services:
+  wb-storage-report:
+    build: .
+    container_name: wb-storage-report
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+      - ./logs:/app/logs
+    environment:
+      - TZ=Europe/Moscow
+    restart: unless-stopped 
