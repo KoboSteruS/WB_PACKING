@@ -6,7 +6,7 @@ from loguru import logger
 from wb_api import WildberriesAPI
 from sheets_client import GoogleSheetsClient
 from config import TIMEZONE
-from utils.date_utils import get_previous_week_dates
+from utils.date_utils import get_previous_week_dates, get_specific_week_dates
 import random
 import os
 
@@ -34,14 +34,21 @@ def process_storage_report() -> None:
         # Инициализация клиента Google Sheets
         sheets_client = GoogleSheetsClient()
         
+        # Проверяем заголовки во всех отчетных листах
+        logger.info("Проверка и восстановление заголовков в отчетных листах")
+        for cell in ['B1', 'C1']:
+            sheet = sheets_client.reports_sheets.get(cell)
+            if sheet:
+                sheets_client._ensure_headers(sheet)
+        
         # Получение API ключей
         api_keys = sheets_client.get_api_keys()
         if not api_keys:
             logger.error("API ключи не найдены в настройках")
             return
             
-        # Получение дат прошлой недели
-        date_from, date_to = get_previous_week_dates(TIMEZONE)
+        # Получение дат для конкретной недели (9-15 июня 2025)
+        date_from, date_to = get_specific_week_dates(2025, 6, 9, 15, TIMEZONE)
         logger.info(f"Расчетный период: с {date_from.strftime('%Y-%m-%d')} по {date_to.strftime('%Y-%m-%d')}")
             
         # Форматирование дат для API

@@ -64,6 +64,8 @@ class GoogleSheetsClient:
                 # Пытаемся получить существующий лист
                 sheet = self.spreadsheet.worksheet(sheet_name)
                 logger.info(f"Найден существующий лист {sheet_name}")
+                # Проверяем и восстанавливаем заголовки в существующем листе
+                self._ensure_headers_exists(sheet)
             except gspread.exceptions.WorksheetNotFound:
                 # Создаем новый лист если не существует
                 sheet = self.spreadsheet.add_worksheet(sheet_name, 1000, len(HEADERS))
@@ -74,6 +76,26 @@ class GoogleSheetsClient:
             
         return reports_sheets
     
+    def _ensure_headers_exists(self, sheet: gspread.Worksheet) -> None:
+        """
+        Проверяет наличие заголовков при инициализации листа
+        
+        Args:
+            sheet (gspread.Worksheet): Лист для проверки
+        """
+        try:
+            # Получаем первую строку
+            first_row = sheet.row_values(1)
+            
+            # Если первая строка пустая или заголовки неправильные
+            if not first_row or len(first_row) < len(HEADERS) or first_row[0] != HEADERS[0]:
+                # Обновляем заголовки
+                range_name = f'A1:{chr(ord("A") + len(HEADERS) - 1)}1'
+                sheet.update(range_name, [HEADERS])
+                logger.info(f"Установлены заголовки в листе {sheet.title}")
+        except Exception as e:
+            logger.error(f"Ошибка при установке заголовков в листе {sheet.title}: {e}")
+    
     def _clear_sheet_data(self, sheet: gspread.Worksheet) -> None:
         """
         Очистка данных в листе, сохраняя заголовки
@@ -82,13 +104,20 @@ class GoogleSheetsClient:
             sheet (gspread.Worksheet): Лист для очистки
         """
         try:
-            # Получаем количество строк в листе
-            row_count = len(sheet.get_all_values())
+            # Получаем все значения
+            all_values = sheet.get_all_values()
+            row_count = len(all_values)
             
             if row_count > 1:  # Если есть данные кроме заголовков
-                # Очищаем все строки кроме заголовков
-                sheet.batch_clear([f'A2:Z{row_count}'])
-                logger.info(f"Очищены старые данные в листе {sheet.title}")
+                # Определяем диапазон для очистки (от 2-й строки до последней)
+                max_col = chr(ord("A") + len(HEADERS) - 1)
+                clear_range = f'A2:{max_col}{row_count}'
+                sheet.batch_clear([clear_range])
+                logger.info(f"Очищены старые данные в листе {sheet.title} (диапазон {clear_range})")
+            elif row_count == 0:
+                # Если лист полностью пустой, добавляем заголовки
+                sheet.append_row(HEADERS)
+                logger.info(f"Добавлены заголовки в пустой лист {sheet.title}")
         except Exception as e:
             logger.error(f"Ошибка при очистке данных в листе {sheet.title}: {e}")
     
@@ -200,11 +229,15 @@ class GoogleSheetsClient:
             # Получаем первую строку
             first_row = sheet.row_values(1)
             
-            # Если первая строка пустая или не содержит правильные заголовки
-            if not first_row or first_row[0] != HEADERS[0]:
-                # Очищаем первую строку и добавляем заголовки
-                sheet.clear()
+            # Проверяем, есть ли заголовки
+            if not first_row:
+                # Если лист полностью пустой - добавляем заголовки
                 sheet.append_row(HEADERS)
+                logger.info(f"Добавлены заголовки в пустой лист {sheet.title}")
+            elif len(first_row) < len(HEADERS) or first_row[0] != HEADERS[0]:
+                # Если заголовки неполные или неправильные - обновляем только первую строку
+                range_name = f'A1:{chr(ord("A") + len(HEADERS) - 1)}1'
+                sheet.update(range_name, [HEADERS])
                 logger.info(f"Восстановлены заголовки в листе {sheet.title}")
         except Exception as e:
             logger.error(f"Ошибка при проверке заголовков в листе {sheet.title}: {e}")
