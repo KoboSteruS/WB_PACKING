@@ -189,6 +189,26 @@ class GoogleSheetsClient:
         except Exception:
             return None
     
+    def _ensure_headers(self, sheet: gspread.Worksheet) -> None:
+        """
+        Проверяет наличие заголовков и добавляет их при необходимости
+        
+        Args:
+            sheet (gspread.Worksheet): Лист для проверки
+        """
+        try:
+            # Получаем первую строку
+            first_row = sheet.row_values(1)
+            
+            # Если первая строка пустая или не содержит правильные заголовки
+            if not first_row or first_row[0] != HEADERS[0]:
+                # Очищаем первую строку и добавляем заголовки
+                sheet.clear()
+                sheet.append_row(HEADERS)
+                logger.info(f"Восстановлены заголовки в листе {sheet.title}")
+        except Exception as e:
+            logger.error(f"Ошибка при проверке заголовков в листе {sheet.title}: {e}")
+    
     def append_report_data(self, data: List[List[Any]], api_key_cell: str) -> None:
         """
         Добавление данных в отчет с предварительной очисткой
@@ -206,7 +226,10 @@ class GoogleSheetsClient:
                 logger.error(f"Не найден лист для ключа из ячейки {api_key_cell}")
                 return
             
-            # Очищаем старые данные
+            # Проверяем и восстанавливаем заголовки
+            self._ensure_headers(sheet)
+            
+            # Очищаем старые данные (кроме заголовков)
             self._clear_sheet_data(sheet)
             
             # Записываем новые данные

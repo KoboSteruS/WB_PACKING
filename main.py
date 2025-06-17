@@ -87,6 +87,10 @@ def main():
     try:
         logger.info("Запуск приложения в контейнере")
         
+        # Немедленное выполнение основного функционала
+        logger.info("Запуск немедленной обработки отчетов")
+        process_storage_report()
+        
         # Установка часового пояса
         timezone = pytz.timezone(TIMEZONE)
         current_time = datetime.now(timezone)
@@ -100,11 +104,6 @@ def main():
         
         # Планирование выполнения каждый понедельник
         schedule.every().monday.at(schedule_time).do(process_storage_report)
-        
-        # Если сейчас понедельник и время между 6:00 и 7:00, выполняем сразу
-        if current_time.weekday() == 0 and 6 <= current_time.hour < 7:
-            logger.info("Текущее время подходит для немедленного выполнения")
-            process_storage_report()
         
         logger.info("Переход в режим ожидания следующего запланированного выполнения")
         

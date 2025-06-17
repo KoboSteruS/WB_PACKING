@@ -39,8 +39,6 @@ logs/
 .env.local
 .env.*.local
 
-# Sensitive data
-credentials.json
 
 # Project specific
 app.log 
