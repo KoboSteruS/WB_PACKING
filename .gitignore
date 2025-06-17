@@ -42,3 +42,6 @@ logs/
 
 # Project specific
 app.log 
+
+
+credentials.json
